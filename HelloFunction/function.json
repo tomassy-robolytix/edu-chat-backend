@@ -1,13 +1,16 @@
-const { app } = require('@azure/functions');
-
-app.http('HelloFunction', {
-    methods: ['GET', 'POST'],
-    authLevel: 'anonymous',
-    handler: async (request, context) => {
-        context.log(`Http function processed request for url "${request.url}"`);
-
-        const name = request.query.get('name') || await request.text() || 'world';
-
-        return { body: `Hello, ${name}!` };
+{
+  "bindings": [
+    {
+      "authLevel": "anonymous",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": ["get","post"]
+    },
+    {
+      "type": "http",
+      "direction": "out",
+      "name": "res"
     }
-});
+  ]
+}
