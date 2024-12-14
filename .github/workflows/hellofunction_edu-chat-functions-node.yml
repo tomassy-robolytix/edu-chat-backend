@@ -1,0 +1,39 @@
+name: Deploy Azure Functions with Node.js 20
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Set up Node.js (version 20)
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # 3. Install dependencies from package.json
+      - name: Install dependencies
+        run: npm ci
+
+      # 4. Build the project (if needed)
+      - name: Build project
+        run: npm run build
+        continue-on-error: true # Pokračuje i při chybě, pokud build není potřeba
+
+      # 5. Deploy to Azure Functions
+      - name: Deploy to Azure Functions
+        uses: azure/functions-action@v1
+        with:
+          app-name: edu-chat-functions-node # Zadej název tvé Function App
+          slot-name: 'production'
+          package: '.'
