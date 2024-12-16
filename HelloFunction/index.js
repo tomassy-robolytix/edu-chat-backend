@@ -38,7 +38,7 @@ module.exports = async function (context, req) {
 
     const newItem = {
       id: Date.now().toString(),
-      message: "Hello from Azure Functions!"
+      message: "Hello from Azure Functions!!"
     };
 
     await container.items.create(newItem);
