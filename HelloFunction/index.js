@@ -6,21 +6,19 @@ module.exports = async function (context, req) {
     try {
         // Získání connection string
         const endpoint = process.env.COSMOS_DB_CONNECTION_STRING;
-        context.log("Connection String:", endpoint); // Loguje connection string pro kontrolu
         if (!endpoint) throw new Error("COSMOS_DB_CONNECTION_STRING is missing.");
 
         // Inicializace klienta
         const cosmosClient = new CosmosClient(endpoint);
 
-        // Ověření databáze a kontejneru
-        const databaseName = "edu-chat-db";
-        const containerName = "edu-chat-container";
+        // Správné názvy databáze a kontejneru
+        const databaseName = "EduChatDB";
+        const containerName = "UserProgress";
 
         context.log(`Connecting to database: ${databaseName}, container: ${containerName}`);
         const container = cosmosClient.database(databaseName).container(containerName);
 
         // Test čtení dat
-        context.log("Fetching data...");
         const { resources } = await container.items.readAll().fetchAll();
 
         context.log("Data fetched successfully:", resources);
