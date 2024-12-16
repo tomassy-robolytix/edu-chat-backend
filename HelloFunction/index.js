@@ -1,37 +1,38 @@
 const { CosmosClient } = require("@azure/cosmos");
 
+// Získání connection string z proměnného prostředí
+const endpoint = process.env.COSMOS_DB_CONNECTION_STRING;
+
+// Inicializace CosmosClient
+const cosmosClient = new CosmosClient(endpoint);
+
+// Připojení k databázi a kontejneru
+const databaseName = "EduChatDB";
+const containerName = "UserProgress";
+
 module.exports = async function (context, req) {
-    context.log("Testing connection to Cosmos DB...");
+  try {
+    // Získání reference na databázi a kontejner
+    const database = cosmosClient.database(databaseName);
+    const container = database.container(containerName);
 
-    try {
-        // Získání connection string
-        const endpoint = process.env.COSMOS_DB_CONNECTION_STRING;
-        if (!endpoint) throw new Error("COSMOS_DB_CONNECTION_STRING is missing.");
+    // Provedení dotazu (například SELECT * FROM c)
+    const { resources: items } = await container.items
+      .query("SELECT * FROM c")
+      .fetchAll();
 
-        // Inicializace klienta
-        const cosmosClient = new CosmosClient(endpoint);
+    context.log("Data successfully fetched from Cosmos DB");
 
-        // Správné názvy databáze a kontejneru
-        const databaseName = "EduChatDB";
-        const containerName = "UserProgress";
-
-        context.log(`Connecting to database: ${databaseName}, container: ${containerName}`);
-        const container = cosmosClient.database(databaseName).container(containerName);
-
-        // Test čtení dat
-        const { resources } = await container.items.readAll().fetchAll();
-
-        context.log("Data fetched successfully:", resources);
-
-        context.res = {
-            status: 200,
-            body: `Successfully connected to Cosmos DB! Retrieved ${resources.length} items.`
-        };
-    } catch (error) {
-        context.log.error(`Error: ${error.message}`, error);
-        context.res = {
-            status: 500,
-            body: `Error connecting to Cosmos DB: ${error.message}`
-        };
-    }
+    // Odpověď na HTTP požadavek
+    context.res = {
+      status: 200,
+      body: items,
+    };
+  } catch (err) {
+    context.log.error("Error occurred while fetching data from Cosmos DB:", err);
+    context.res = {
+      status: 500,
+      body: "Internal Server Error. Check function logs for details.",
+    };
+  }
 };
