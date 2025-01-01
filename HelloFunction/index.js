@@ -18,13 +18,37 @@ module.exports = async function (context, req) {
         const database = cosmosClient.database(databaseName);
         const container = database.container(containerName);
 
-        const { resources: items } = await container.items.query("SELECT * FROM c").fetchAll();
+        if (req.method === "GET") {
+            // Zpracování GET požadavku
+            const { resources: items } = await container.items.query("SELECT * FROM c").fetchAll();
+            context.log(`Query executed successfully. Found ${items.length} items.`);
+            context.res = {
+                status: 200,
+                body: items
+            };
+        } else if (req.method === "POST") {
+            // Zpracování POST požadavku
+            const newItem = req.body;
+            if (!newItem || !newItem.id || !newItem.name) {
+                context.res = {
+                    status: 400,
+                    body: "Invalid data. 'id' and 'name' are required."
+                };
+                return;
+            }
 
-        context.log(`Query executed successfully. Found ${items.length} items.`);
-        context.res = {
-            status: 200,
-            body: items
-        };
+            const { resource: createdItem } = await container.items.create(newItem);
+            context.log(`Item created successfully. ID: ${createdItem.id}`);
+            context.res = {
+                status: 201,
+                body: createdItem
+            };
+        } else {
+            context.res = {
+                status: 405,
+                body: "Method not allowed."
+            };
+        }
     } catch (err) {
         context.log.error('=== Error occurred ===');
         context.log.error(`Error message: ${err.message}`);
