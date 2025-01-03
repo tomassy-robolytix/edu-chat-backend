@@ -1,60 +1,95 @@
 const { CosmosClient } = require("@azure/cosmos");
 
 module.exports = async function (context, req) {
-    context.log('=== Starting HelloFunction ===');
+    context.log("=== Starting HelloFunction ===");
 
-    try {
-        const endpoint = process.env.COSMOS_DB_CONNECTION_STRING;
-        if (!endpoint) {
-            throw new Error("COSMOS_DB_CONNECTION_STRING is not set.");
-        }
-        context.log('Connection string is set.');
+    const endpoint = process.env.COSMOS_DB_CONNECTION_STRING;
+    const cosmosClient = new CosmosClient(endpoint);
+    const databaseName = "EduChatDB";
+    const containerName = "UserProgress";
 
-        const cosmosClient = new CosmosClient(endpoint);
-        const databaseName = "EduChatDB";
-        const containerName = "UserProgress";
+    const database = cosmosClient.database(databaseName);
+    const container = database.container(containerName);
 
-        context.log(`Connecting to database: ${databaseName}, container: ${containerName}`);
-        const database = cosmosClient.database(databaseName);
-        const container = database.container(containerName);
+    if (req.method === "PUT") {
+        // Editace uživatele
+        try {
+            const { id, name, progress, grade, sis, sisLogin, sisPassword } = req.body;
 
-        if (req.method === "GET") {
-            // Zpracování GET požadavku
-            const { resources: items } = await container.items.query("SELECT * FROM c").fetchAll();
-            context.log(`Query executed successfully. Found ${items.length} items.`);
-            context.res = {
-                status: 200,
-                body: items
-            };
-        } else if (req.method === "POST") {
-            // Zpracování POST požadavku
-            const newItem = req.body;
-            if (!newItem || !newItem.id || !newItem.name) {
-                context.res = {
-                    status: 400,
-                    body: "Invalid data. 'id' and 'name' are required."
-                };
-                return;
+            if (!id) {
+                throw new Error("Missing ID");
             }
 
-            const { resource: createdItem } = await container.items.create(newItem);
-            context.log(`Item created successfully. ID: ${createdItem.id}`);
-            context.res = {
-                status: 201,
-                body: createdItem
+            // Najdi existujícího uživatele
+            const { resource: existingUser } = await container.item(id, id).read();
+            if (!existingUser) {
+                throw new Error("User not found");
+            }
+
+            // Aktualizuj data
+            const updatedUser = {
+                ...existingUser, // Zachová stávající data
+                name: name || existingUser.name,
+                progress: progress || existingUser.progress,
+                grade: grade || existingUser.grade,
+                sis: sis || existingUser.sis,
+                sisLogin: sisLogin || existingUser.sisLogin,
+                sisPassword: sisPassword || existingUser.sisPassword,
             };
-        } else {
+
+            const { resource } = await container.item(id, id).replace(updatedUser);
+
             context.res = {
-                status: 405,
-                body: "Method not allowed."
+                status: 200,
+                body: resource,
+            };
+        } catch (err) {
+            context.res = {
+                status: 400,
+                body: `Error: ${err.message}`,
             };
         }
-    } catch (err) {
-        context.log.error('=== Error occurred ===');
-        context.log.error(`Error message: ${err.message}`);
+    } else if (req.method === "GET") {
+        // Načtení dat
+        const { resources } = await container.items.query("SELECT * FROM c").fetchAll();
         context.res = {
-            status: 500,
-            body: `Error: ${err.message}`
+            status: 200,
+            body: resources,
+        };
+    } else if (req.method === "POST") {
+        // Přidání uživatele
+        try {
+            const { id, name, progress, grade, sis, sisLogin, sisPassword } = req.body;
+
+            if (!id || !name || !grade || !sis) {
+                throw new Error("Missing required fields");
+            }
+
+            const newUser = {
+                id,
+                name,
+                progress,
+                grade,
+                sis,
+                sisLogin,
+                sisPassword,
+            };
+
+            const { resource } = await container.items.create(newUser);
+            context.res = {
+                status: 200,
+                body: resource,
+            };
+        } catch (err) {
+            context.res = {
+                status: 400,
+                body: `Error: ${err.message}`,
+            };
+        }
+    } else {
+        context.res = {
+            status: 405,
+            body: "Method Not Allowed",
         };
     }
 };
